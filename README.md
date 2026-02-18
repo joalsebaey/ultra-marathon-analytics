@@ -45,28 +45,34 @@ Despite the explosive growth of ultra-running, there was no centralized, accessi
 ---
 ## 🔁 Design Iteration: From Raw Star Schema → Aggregated Analytics Model
 
-Before building the final dashboard, I first implemented a **classic star schema** using the detailed race-results fact table (`fact_race_results`) with supporting dimensions. This first version helped validate the business questions quickly, but exposed critical performance and maintainability issues at scale.
+Before building the final dashboard, I first implemented a **classic star schema** using the detailed race-results fact table. This first version validated business questions quickly, but exposed critical performance issues at scale.
 
 ### V0 (Initial Attempt): Raw Star Schema on Detailed Results
+
+![Star Schema Model](screenshots/star%20schema%20model.png)
+
 **Model:** `fact_race_results` (4.6M rows) connected to `dim_athletes`, `dim_events`, `dim_gender`, `dim_distance`
 
 **What worked:**
-- Full drill-down capability to individual athlete records
+- Full drill-down to individual athlete records
 - Flexible ad-hoc analysis without pre-computing aggregations
 
 **Why it didn't scale:**
 | Issue | Impact |
 |-------|--------|
 | **High-cardinality filtering** | Slicing by year/gender/distance caused 3-5 second delays |
-| **Complex DAX** | Measures required `SUMMARIZE` or `GROUPBY` over millions of rows, increasing error risk |
-| **Filter ambiguity** | Mixing athlete-level and event-level fields created circular reference warnings |
-| **Model bloat** | .pbix file exceeded 500MB, causing version control and sharing issues |
-| **Refresh friction** | Development iteration slowed due to long save/load times |
+| **Complex DAX** | Measures required `SUMMARIZE` or `GROUPBY` over millions of rows |
+| **Filter ambiguity** | Mixing athlete/event-level fields created circular reference warnings |
+| **Model bloat** | .pbix file exceeded 500MB, causing version control issues |
+| **Refresh friction** | Long save/load times slowed development iteration |
 
 ### V1 (Current): Analytics-First Model with Pre-Aggregations
+
+![Aggregated Analytics Model](screenshots/Aggregated%20Analytics%20Model.png)
+
 Moved heavy computation **upstream into PySpark**, exporting five analysis-ready tables totaling ~50K rows instead of 4.6M.
 
-**Trade-off accepted:** Lost row-level drill-down (can't click to see "John Doe's 2019 race history") in exchange for:
+**Trade-off accepted:** Lost row-level drill-down in exchange for:
 - **95% model size reduction** (500MB → 25MB)
 - **Sub-second query response** for all interactions
 - **Simplified DAX** (mostly `SUM()` and `DIVIDE()`)
@@ -80,7 +86,7 @@ Moved heavy computation **upstream into PySpark**, exporting five analysis-ready
 
 ### A. Infrastructure Hurdles
 **Challenge:** PySpark on Windows requires Hadoop binaries (`winutils.exe`) and environment variable gymnastics.  
-**Solution:** Switched to Google Colab for development, then containerized with Docker for reproducibility. Local Windows setup is viable but adds friction to Big Data workflows.
+**Solution:** Switched to Google Colab for development. Local Windows setup is viable but adds friction to Big Data workflows.
 
 ### B. The "Flexibility vs. Performance" Tension
 **Mistake:** Initially assumed star schema = "correct" data warehousing, ignoring the specific use case.  
