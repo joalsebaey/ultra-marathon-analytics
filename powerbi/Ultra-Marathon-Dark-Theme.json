@@ -1,0 +1,7 @@
+{
+  "name": "Ultra Marathon Dark Theme",
+  "dataColors": ["#00FFFF", "#FF00FF", "#00FF00", "#FFD700", "#FF6347", "#7B68EE"],
+  "background": "#0F172A",
+  "foreground": "#E0E0E0",
+  "tableAccent": "#00FFFF"
+}
