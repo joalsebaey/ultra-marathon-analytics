@@ -179,6 +179,32 @@ dim_distance ──────────────┐   │   │   │   �
                 agg_elite_vs_avg
 ```
 
+### Model Evolution: From Traditional Star Schema to Optimized Aggregations
+
+**Initial Approach – Traditional Star Schema**
+
+The project initially implemented a classic star schema with a central `fact_results` table connected to dimension tables (`dim_athlete`, `dim_event`, `dim_gender`). While this is the textbook approach for data warehousing, it presented several challenges for this specific use case:
+
+**Limitations of the Traditional Approach:**
+- **Performance Issues** – With 4.6M+ fact records, query performance was slow for dashboard visualizations
+- - **Excessive Cardinality** – The fact table had too many rows for interactive filtering and slicing
+  - - **DAX Complexity** – Measures required complex aggregations across millions of rows, causing refresh delays
+    - - **Model Size** – The .pbix file became too large (>500MB), making sharing and collaboration difficult
+      - - **Limited Interactivity** – Slow response times degraded user experience when applying filters or drilling down
+       
+        - **Current Approach – Pre-Aggregated Star Schema**
+       
+        - To address these limitations, the model was redesigned to use **pre-aggregated dimension tables** exported from PySpark. This hybrid approach combines the best of both worlds:
+       
+        - **Benefits of the Optimized Model:**
+        - - **95% Size Reduction** – Model reduced from ~500MB to ~25MB by eliminating the raw fact table
+          - - **10x Faster Performance** – Pre-aggregated tables load instantly with sub-second query response times
+            - - **Simplified DAX** – Most metrics are simple SUM() operations instead of complex iterators
+              - - **Maintained Star Schema** – Still follows dimensional modeling principles with proper relationships
+                - - **Scalability** – PySpark handles heavy aggregations, Power BI focuses on visualization and interactivity
+                 
+                  - **Trade-off:** This approach sacrifices row-level drill-down capability in exchange for significantly better performance and user experience. For analytics dashboards focused on trends and patterns rather than individual race results, this is the optimal design choice.
+
 See [`powerbi/dax_measures.md`](powerbi/dax_measures.md) for full DAX documentation.
 
 ---
