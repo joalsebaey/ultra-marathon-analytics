@@ -43,6 +43,62 @@ Despite the explosive growth of ultra-running, there was no centralized, accessi
 | 7 | **Elite Advantage** | Elite runners average **11.45 km/h** at 50km vs **7.07 km/h** for average runners — a **62% speed gap** |
 
 ---
+## 🔁 Design Iteration: From Raw Star Schema → Aggregated Analytics Model
+
+Before building the final dashboard, I first implemented a **classic star schema** using the detailed race-results fact table (`fact_race_results`) with supporting dimensions. This first version helped validate the business questions quickly, but exposed critical performance and maintainability issues at scale.
+
+### V0 (Initial Attempt): Raw Star Schema on Detailed Results
+**Model:** `fact_race_results` (4.6M rows) connected to `dim_athletes`, `dim_events`, `dim_gender`, `dim_distance`
+
+**What worked:**
+- Full drill-down capability to individual athlete records
+- Flexible ad-hoc analysis without pre-computing aggregations
+
+**Why it didn't scale:**
+| Issue | Impact |
+|-------|--------|
+| **High-cardinality filtering** | Slicing by year/gender/distance caused 3-5 second delays |
+| **Complex DAX** | Measures required `SUMMARIZE` or `GROUPBY` over millions of rows, increasing error risk |
+| **Filter ambiguity** | Mixing athlete-level and event-level fields created circular reference warnings |
+| **Model bloat** | .pbix file exceeded 500MB, causing version control and sharing issues |
+| **Refresh friction** | Development iteration slowed due to long save/load times |
+
+### V1 (Current): Analytics-First Model with Pre-Aggregations
+Moved heavy computation **upstream into PySpark**, exporting five analysis-ready tables totaling ~50K rows instead of 4.6M.
+
+**Trade-off accepted:** Lost row-level drill-down (can't click to see "John Doe's 2019 race history") in exchange for:
+- **95% model size reduction** (500MB → 25MB)
+- **Sub-second query response** for all interactions
+- **Simplified DAX** (mostly `SUM()` and `DIVIDE()`)
+- **Clearer semantics** — each table maps to a specific business question
+
+&gt; **Key insight:** For trend dashboards, pre-aggregation is often the right call. For operational tools (e.g., "find my race results"), the raw star schema would be necessary.
+
+---
+
+## 🎓 Lessons Learned
+
+### A. Infrastructure Hurdles
+**Challenge:** PySpark on Windows requires Hadoop binaries (`winutils.exe`) and environment variable gymnastics.  
+**Solution:** Switched to Google Colab for development, then containerized with Docker for reproducibility. Local Windows setup is viable but adds friction to Big Data workflows.
+
+### B. The "Flexibility vs. Performance" Tension
+**Mistake:** Initially assumed star schema = "correct" data warehousing, ignoring the specific use case.  
+**Realization:** Power BI is not a data lake query engine. When the goal is *trend visualization* not *record lookup*, pre-aggregation is a feature, not a shortcut.
+
+### C. DAX Type Safety
+**Pitfall:** `SWITCH(TRUE(), [metric] &gt; 10, "Fast", "Slow")` fails silently if `[metric]` is text instead of number.  
+**Fix:** Enforced strict typing in PySpark (`FloatType()`, `IntegerType()`) and added validation asserts before CSV export. An hour of defensive ETL saved days of debugging DAX.
+
+### D. Data Quality Surprises
+**Discovery:** ~2.5M "duplicate" records weren't true duplicates—they were athletes running the same event in different years.  
+**Action:** Changed deduplication logic from `DISTINCT *` to `DISTINCT athlete_id, event_id, year_of_event` to preserve legitimate repeat participation while removing true data errors.
+
+### E. Stakeholder Communication
+**Learning:** The "Peak Age Curve" visual initially confused beta testers who thought 35-45 was "old" for peak performance.  
+**Adjustment:** Added contextual subtitle ("Endurance sports favor aerobic capacity over raw speed") and comparison to marathon (peak ~28-32) to frame ultra-running's unique physiology.
+
+---
 
 ## 🏗️ Architecture & Tech Stack
 
