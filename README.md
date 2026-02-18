@@ -348,7 +348,7 @@ See [`requirements.txt`](requirements.txt) for full list.
 
 **Yousef Alsebaey**  
 AI & Data Science Student  
-📍 El Mansoura, Egypt  
+📍 Cairo, Egypt  
 
 [![GitHub](https://img.shields.io/badge/GitHub-joalsebaey-181717?style=flat&logo=github)](https://github.com/joalsebaey)
 
